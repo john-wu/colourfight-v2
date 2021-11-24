@@ -1,11 +1,15 @@
 import Header from "./components/Header";
 import JoinMenu from "./components/JoinMenu";
 import { useState, useEffect, useRef } from 'react';
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom"
+import GameBoard from "./components/GameBoard";
 
 function App() {
-  const [new_game_id, set_new_game_id] = useState("");
+  const [interface_data, set_interface_data] = useState({});
   const [client_data, set_client_data] = useState({});
-  const [game_data, set_game_data] = useState({});
+  const [game_data, set_game_data] = useState({
+    "joined_game": false
+  });
   const websocket = useRef(null);
 
   useEffect( () => {
@@ -13,7 +17,6 @@ function App() {
     websocket.current.onmessage = message => {
       // received server message
       const response = JSON.parse(message.data);
-      console.log(response);
 
       // receive connect response from server
       if (response.method === "connect") {
@@ -24,7 +27,20 @@ function App() {
       // receive create response from server
       if (response.method === "create") {
         const game_id = response.game.id;
-        set_new_game_id(game_id);
+        set_interface_data({...interface_data, new_game_id: game_id});
+      };
+
+      // receive join response from server
+      if (response.method === "join") {
+        const game = response.game;
+
+        if (!game) {
+          set_interface_data({...interface_data, error_message: response.error})
+          return;
+        }
+
+        set_game_data({...game, joined_game: true})
+        console.log(game_data);   
       };
     };
   }, []);
@@ -43,15 +59,42 @@ function App() {
   };
 
   // on join game button press
-  const join_game = () => {
+  const join_game = async (player_name, game_id) => {
+    const client_id = client_data.client_id;
 
+    if (!game_id) {
+      set_interface_data({...interface_data, error_message: "Please add a Game ID"});
+      return
+    }
+    else {
+      set_interface_data({...interface_data, error_message: ""});
+    }
+
+    // user wants to join existing game
+    const payload = {
+        "method": "join",
+        "client_id": client_id,
+        "game_id": game_id,
+        "player_name": player_name
+    };
+
+    const response = await websocket.current.send(JSON.stringify(payload));
   };
 
   return (
-    <div className="container">
-      <Header title="Colour Fight" />
-      <JoinMenu new_game_id={new_game_id} new_game={new_game} join_game={join_game} />
-    </div>
+    <Router>
+      <div className="container">
+        <Header title="Colour Fight" />
+        <Routes>
+          <Route path="/" exact element={
+            <JoinMenu interface_data={interface_data} new_game={new_game} join_game={join_game} />
+          } />
+          <Route path="/game" element={
+            <GameBoard />
+          } />
+        </Routes>        
+      </div>
+    </Router>
   );
 }
 

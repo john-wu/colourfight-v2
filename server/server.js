@@ -2,7 +2,6 @@ const path = require("path");
 const http = require("http");
 const { v4: uuidv4 } = require('uuid');
 const ws_server = require("websocket").server;
-const { response } = require("express");
 
 // create server and listen for requests
 const http_server = http.createServer();
@@ -58,10 +57,24 @@ websocket_server.on("request", request => {
             const game = games[game_id];
 
             if (!game) {
+                const payload = {
+                    "method": "join",
+                    "game": null,
+                    "error": "Invalid Game ID!"
+                }
+
+                clients[client_id].connection.send(JSON.stringify(payload));
                 return;
             }
             if (Object.keys(game.clients).length >= 3) {
                 // max players
+                const payload = {
+                    "method": "join",
+                    "game": null,
+                    "error": "Game is full!"
+                }
+
+                clients[client_id].connection.send(JSON.stringify(payload));
                 return;
             }
 
