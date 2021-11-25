@@ -16,6 +16,12 @@ body {
   grid-gap: 10px;
 }
 
+.scoreBoard {
+  display: grid;
+  grid-template-columns: max-content max-content;
+  grid-gap: 10px;
+}
+
 .container {
   max-width: 800px;
   margin: 30px auto;

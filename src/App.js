@@ -1,10 +1,11 @@
 import Header from "./components/Header";
 import JoinMenu from "./components/JoinMenu";
 import { useState, useEffect, useRef } from 'react';
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom"
+import { Routes, Route, useNavigate } from "react-router-dom";
 import GameBoard from "./components/GameBoard";
 
 function App() {
+  const navigate = useNavigate();
   const [interface_data, set_interface_data] = useState({});
   const [client_data, set_client_data] = useState({});
   const [game_data, set_game_data] = useState({
@@ -21,7 +22,6 @@ function App() {
       // receive connect response from server
       if (response.method === "connect") {
         set_client_data({"client_id": response.client_id});
-        console.log("Client id set successfully: " + client_data.client_id);
       };
 
       // receive create response from server
@@ -40,7 +40,8 @@ function App() {
         }
 
         set_game_data({...game, joined_game: true})
-        console.log(game_data);   
+        console.log("navigating!")
+        navigate(`/game/${game.id}`)
       };
     };
   }, []);
@@ -82,19 +83,17 @@ function App() {
   };
 
   return (
-    <Router>
-      <div className="container">
-        <Header title="Colour Fight" />
-        <Routes>
-          <Route path="/" exact element={
-            <JoinMenu interface_data={interface_data} new_game={new_game} join_game={join_game} />
-          } />
-          <Route path="/game" element={
-            <GameBoard />
-          } />
-        </Routes>        
-      </div>
-    </Router>
+    <div className="container">
+      <Header title="Colour Fight" />
+      <Routes>
+        <Route path="/" exact element={
+          <JoinMenu interface_data={interface_data} new_game={new_game} join_game={join_game} />
+        } />
+        <Route path="/game/:id" exact element={
+          <GameBoard game_data={game_data} />
+        } />
+      </Routes>        
+    </div>
   );
 }
 
