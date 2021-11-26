@@ -10,10 +10,44 @@ body {
   font-family: 'Poppins', sans-serif;
 }
 
+.mainMenu {
+  display: grid;
+  grid-template-columns: max-content max-content;
+  grid-gap: 50px;
+}
+
+.menuLink {
+  display: inline-block;
+  background: gray;
+  color: #fff;
+  border: none;
+  padding-left: 15px;
+  padding-right: 15px;
+  margin: auto;
+  cursor: pointer;
+  text-decoration: none;
+  font-size: 30px;
+  font-family: inherit;
+  border-radius: 5px;
+  white-space: nowrap;
+}
+
+.newMenu {
+  display: grid;
+  grid-template-columns: max-content max-content;
+  grid-gap: 10px;
+}
+
 .joinMenu {
   display: grid;
   grid-template-columns: max-content max-content;
   grid-gap: 10px;
+}
+
+.gameHeader {
+  display: grid;
+  grid-template-columns: max-content max-content;
+  grid-gap: 100px;
 }
 
 .scoreBoard {

@@ -1,15 +1,22 @@
 import Header from "./components/Header";
+import MainMenu from "./components/MainMenu";
+import NewMenu from "./components/NewMenu";
 import JoinMenu from "./components/JoinMenu";
+import GameBoard from "./components/GameBoard";
 import { useState, useEffect, useRef } from 'react';
 import { Routes, Route, useNavigate } from "react-router-dom";
-import GameBoard from "./components/GameBoard";
+import useWebSocket, { ReadyState } from "react-use-websocket";
+
 
 function App() {
   const navigate = useNavigate();
+  const [socketUrl, setSocketUrl] = useState("ws://localhost:8080");
+  const [messageHistory, setMessageHistory] = useState([]);
   const [interface_data, set_interface_data] = useState({});
   const [client_data, set_client_data] = useState({});
   const [game_data, set_game_data] = useState({});
   const websocket = useRef(null);
+  const global_data = {};
 
   useEffect(() => {
     set_interface_data(JSON.parse(window.localStorage.getItem('interface_data')));
@@ -29,57 +36,84 @@ function App() {
     window.localStorage.setItem('game_data', JSON.stringify(game_data));
   }, [game_data]);
 
-  useEffect( () => {
-    websocket.current = new WebSocket("ws://localhost:8080");
-    websocket.current.onmessage = message => {
-      // received server message
-      const response = JSON.parse(message.data);
+  const {
+    sendMessage,
+    lastMessage
+  } = useWebSocket(socketUrl);
 
-      // receive connect response from server
-      if (response.method === "connect") {
-        set_client_data({"client_id": response.client_id});
-      };
+  useEffect(() => {
+    if (lastMessage !== null) {
+      setMessageHistory(prev => prev.concat(lastMessage));
 
-      // receive create response from server
-      if (response.method === "create") {
-        const game_id = response.game.id;
-        set_interface_data(interface_data => ({...interface_data, new_game_id: game_id}));
-      };
+      const response = JSON.parse(lastMessage.data);
+      console.log(response);
+    }
+  }, [lastMessage, setMessageHistory]);
 
-      // receive join response from server
-      if (response.method === "join") {
-        const game = response.game;
+  // useEffect( () => {
+  //   websocket.current = new WebSocket("ws://localhost:8080");
+  //   websocket.current.onmessage = message => {
+  //     // received server message
+  //     const response = JSON.parse(message.data);
 
-        if (!game) {
-          set_interface_data(interface_data => ({...interface_data, error_message: response.error}))
-          return;
-        }
+  //     // receive connect response from server
+  //     if (response.method === "connect") {
+  //       set_client_data({"client_id": response.client_id});
+  //     };
 
-        set_game_data({...game});
-        navigate(`/game/${game.id}`)
-      };
+  //     // receive create response from server
+  //     if (response.method === "create") {
+  //       const game_id = response.game.id;
+  //       join_game(global_data.player_name, game_id);
+  //     };
 
-      // receive update response from server
-      if (response.method === "update") {
-        if (!response.game.state)
-            return;
+  //     // receive join response from server
+  //     if (response.method === "join") {
+  //       const game = response.game;
 
-        const game = response.game;
+  //       if (!game) {
+  //         set_interface_data(interface_data => ({...interface_data, error_message: response.error}))
+  //         return;
+  //       }
 
-        // update game state
-        set_game_data({...game});
-      };
-    };
-  }, []);
+  //       set_game_data({...game});
+  //       navigate(`/game/${game.id}`)
+  //     };
+
+  //     // receive update response from server
+  //     if (response.method === "update") {
+  //       if (!response.game.state)
+  //           return;
+
+  //       const game = response.game;
+
+  //       // update game state
+  //       set_game_data({...game});
+  //     };
+  //   };
+  // }, []);
 
   // on new game button press
-  const new_game = async () => {
+  const new_game = async (num_players, time_limit, player_name) => {
     const client_id = client_data.client_id;
+
+    if (!num_players) {
+      set_interface_data(interface_data => ({...interface_data, error_message: "Please enter Number of Players"}));
+      return;
+    }
+    else if (!time_limit) {
+      set_interface_data(interface_data => ({...interface_data, error_message: "Please enter a Time Limit"}));
+      return;
+    }
+
+    global_data.player_name = player_name;
 
     // user wants to create new game
     const payload = {
       "method": "create",
-      "client_id": client_id
+      "client_id": client_id,
+      "num_players": num_players,
+      "time_limit": time_limit
     };
 
     const response = await websocket.current.send(JSON.stringify(payload));
@@ -87,7 +121,9 @@ function App() {
 
   // on join game button press
   const join_game = async (player_name, game_id) => {
+    console.log(client_data.client_id);
     const client_id = client_data.client_id;
+    setTimeout(() => {  console.log(client_id); }, 200);
 
     if (!game_id) {
       set_interface_data({...interface_data, error_message: "Please add a Game ID"});
@@ -105,12 +141,14 @@ function App() {
         "player_name": player_name
     };
 
+    console.log(client_id)
+
     const response = await websocket.current.send(JSON.stringify(payload));
   };
 
   // on game ball button press
   const click_ball = async (ball_id) => {
-    if(!game_data.started)
+    if(game_data.status !== "started")
       return;
 
     const client_id = client_data.client_id;
@@ -132,7 +170,13 @@ function App() {
       <Header title="Colour Fight" />
       <Routes>
         <Route path="/" exact element={
-          <JoinMenu interface_data={interface_data} new_game={new_game} join_game={join_game} />
+          <MainMenu />
+        } />
+        <Route path="/new" exact element={
+          <NewMenu interface_data={interface_data} new_game={new_game} />
+        } />
+        <Route path="/join" exact element={
+          <JoinMenu interface_data={interface_data} join_game={join_game} />
         } />
         <Route path="/game/:id" exact element={
           <GameBoard game_data={game_data} click_ball={click_ball} />

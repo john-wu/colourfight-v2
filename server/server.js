@@ -21,6 +21,8 @@ const websocket_server = new ws_server({
 });
 websocket_server.on("request", request => {
 
+    console.log(request);
+
     // accept incoming connection
     const connection = request.accept(null, request.origin);
     connection.on("open", () => console.log("Connection opened!"));
@@ -35,13 +37,17 @@ websocket_server.on("request", request => {
         if (response.method === "create") {
             const client_id = response.client_id;
             const game_id = uuidv4();
+            const num_players = response.num_players;
+            const time_limit = response.time_limit;
             games[game_id] = {
                 "id": game_id,
                 "balls": 20,
+                "num_players": parseInt(num_players),
+                "time_remaining": parseInt(time_limit),
                 "clients": {},
                 "state": {},
                 "scores": {},
-                "started": false
+                "status": "pending"
             };
 
             const payload = {
@@ -59,6 +65,7 @@ websocket_server.on("request", request => {
             const game_id = response.game_id;
             let player_name = response.player_name;
             let game = games[game_id];
+            const max_players = game.num_players;
 
             if (!game) {
                 const payload = {
@@ -70,7 +77,7 @@ websocket_server.on("request", request => {
                 clients[client_id].connection.send(JSON.stringify(payload));
                 return;
             }
-            if (Object.keys(game.clients).length >= 3) {
+            if (Object.keys(game.clients).length >= max_players) {
                 // max players
                 const payload = {
                     "method": "join",
@@ -91,11 +98,12 @@ websocket_server.on("request", request => {
             };
             game.scores[player_name] = 0;
             
-            // start game once 3 players reached
-            if (Object.keys(game.clients).length === 3) {
-                games[game_id].started = true;
+            // start game once max players reached
+            if (Object.keys(game.clients).length === max_players) {
+                games[game_id].status = "started";
                 game = games[game_id];
-                update_game_state();
+                update_game_state(game_id);
+                start_timer(game_id);
             }
 
             const payload = {
@@ -137,38 +145,49 @@ websocket_server.on("request", request => {
     connection.send(JSON.stringify(payload));
 });
 
-function update_game_state() {
-    // send updated game state to each client for each game
-    // {"game_id": "xxxxxxx"}
-    for (const g of Object.keys(games)) {
-        const game = games[g];
+function update_game_state(game_id) {
+    // send updated game state to each client
+    const game = games[game_id];
+    if (game.status === "finished")
+        return;
 
-        if (!game.started)
-            continue;
+    // calculate total scores
+    const state = game.state;
+    const scores = game.scores;
+    for (const player_name of Object.keys(scores)) {
+        scores[player_name] = 0;
+    };
+    for (const ball_id of Object.keys(state)) {
+        scores[state[ball_id].player_name] += 1;
+    };
 
-        // calculate total scores
-        const state = game.state;
-        const scores = game.scores;
-        for (const player_name of Object.keys(scores)) {
-            scores[player_name] = 0;
-        };
-        for (const ball_id of Object.keys(state)) {
-            scores[state[ball_id].player_name] += 1;
-        };
+    game["scores"] = scores;
 
-        game["scores"] = scores;
-        console.log(game.scores)
+    const payload = {
+        "method": "update",
+        "game": game
+    };
 
-        const payload = {
-            "method": "update",
-            "game": game
-        };
-
-        for (const client_id of Object.keys(game.clients)) {
-            clients[client_id].connection.send(JSON.stringify(payload));
-        };
+    for (const client_id of Object.keys(game.clients)) {
+        clients[client_id].connection.send(JSON.stringify(payload));
     };
 
     // repeat every 500ms
-    setTimeout(update_game_state, 500);
+    setTimeout(() => {update_game_state(game_id)}, 500);
+}
+
+function start_timer(game_id) {
+    let interval = 1000;
+    let expected = Date.now() + interval;
+    const step = () => {
+        let dt = Date.now() - expected;
+        if (dt > interval) 
+            console.log("Timer drifted too far!");
+
+        games[game_id].time_remaining -= 1
+
+        expected += interval;
+        setTimeout(step, Math.max(0, interval - dt));
+    }
+    setTimeout(step, interval);
 }

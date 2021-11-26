@@ -1,7 +1,7 @@
 import Button from "./Button";
 import { useState } from "react";
 
-const JoinMenu = ( { interface_data, new_game, join_game } ) => {
+const JoinMenu = ( { interface_data, join_game } ) => {
     const [player_name, set_player_name] = useState("");
     const [game_id, set_game_id] = useState("");
 
@@ -12,9 +12,6 @@ const JoinMenu = ( { interface_data, new_game, join_game } ) => {
 
     return (
         <div className="joinMenu">
-            <Button text="New Game" onClick={new_game} />
-            <label>{interface_data && interface_data.new_game_id}</label>
-
             <label>Player Name</label>
             <input type="text" placeholder="Enter Player Name" value={player_name} onChange={(e) => set_player_name(e.target.value)} ></input>
 
