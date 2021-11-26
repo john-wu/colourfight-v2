@@ -13,7 +13,7 @@ const JoinMenu = ( { interface_data, new_game, join_game } ) => {
     return (
         <div className="joinMenu">
             <Button text="New Game" onClick={new_game} />
-            <label>{interface_data.new_game_id}</label>
+            <label>{interface_data && interface_data.new_game_id}</label>
 
             <label>Player Name</label>
             <input type="text" placeholder="Enter Player Name" value={player_name} onChange={(e) => set_player_name(e.target.value)} ></input>
@@ -22,7 +22,7 @@ const JoinMenu = ( { interface_data, new_game, join_game } ) => {
             <input type="text" placeholder="Enter Game ID" value={game_id} onChange={(e) => set_game_id(e.target.value)}></input>
 
             <Button text="Join Game" onClick={on_click_join} />
-            <label style={{color: "red"}} >{interface_data.error_message}</label>
+            <label style={{color: "red"}} >{interface_data && interface_data.error_message}</label>
         </div>
     );
 };

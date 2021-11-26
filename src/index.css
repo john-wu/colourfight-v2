@@ -22,8 +22,27 @@ body {
   grid-gap: 10px;
 }
 
+.playerScore {
+  border-style: solid;
+  border-radius: 5px;
+  padding: 0px 5px;
+}
+
+.playerName {
+  border-style: solid;
+  border-radius: 5px;
+  padding: 0px 5px;
+}
+
+.gameBoard {
+  display: grid;
+  grid-template-columns: max-content max-content max-content max-content max-content;
+  grid-gap: 10px;
+  padding-top: 50px;
+}
+
 .container {
-  max-width: 800px;
+  max-width: 500px;
   margin: 30px auto;
   min-height: 300px;
   border: 1px solid steelblue;

@@ -28,6 +28,8 @@ websocket_server.on("request", request => {
     connection.on("message", message => {
         // message received
         const response = JSON.parse(message.utf8Data);
+
+        console.log(response)
         
         // user wants to create new game
         if (response.method === "create") {
@@ -37,7 +39,9 @@ websocket_server.on("request", request => {
                 "id": game_id,
                 "balls": 20,
                 "clients": {},
-                "state": {}
+                "state": {},
+                "scores": {},
+                "started": false
             };
 
             const payload = {
@@ -54,7 +58,7 @@ websocket_server.on("request", request => {
             const client_id = response.client_id;
             const game_id = response.game_id;
             let player_name = response.player_name;
-            const game = games[game_id];
+            let game = games[game_id];
 
             if (!game) {
                 const payload = {
@@ -85,10 +89,12 @@ websocket_server.on("request", request => {
                 "player_colour": player_colour,
                 "player_name": player_name
             };
+            game.scores[player_name] = 0;
             
             // start game once 3 players reached
             if (Object.keys(game.clients).length === 3) {
-                start_game(game);
+                games[game_id].started = true;
+                game = games[game_id];
                 update_game_state();
             }
 
@@ -131,38 +137,31 @@ websocket_server.on("request", request => {
     connection.send(JSON.stringify(payload));
 });
 
-function start_game(game) {
-    // send start game request to all clients in game
-    const payload = {
-        "method": "start_game"          
-    };
-
-    for (const client_id of Object.keys(game.clients)) {
-        clients[client_id].connection.send(JSON.stringify(payload));
-    };
-};
-
 function update_game_state() {
     // send updated game state to each client for each game
     // {"game_id": "xxxxxxx"}
     for (const g of Object.keys(games)) {
         const game = games[g];
 
+        if (!game.started)
+            continue;
+
         // calculate total scores
-        const scores = {};
-        for (const client_id of Object.keys(game.clients)) {
-            scores[game.clients[client_id].player_name] = 0; 
+        const state = game.state;
+        const scores = game.scores;
+        for (const player_name of Object.keys(scores)) {
+            scores[player_name] = 0;
+        };
+        for (const ball_id of Object.keys(state)) {
+            scores[state[ball_id].player_name] += 1;
         };
 
-        const state = game.state;
-        for (const ball_id of Object.keys(state)) {
-            scores[state[ball_id].player_name] += 1
-        }
+        game["scores"] = scores;
+        console.log(game.scores)
 
         const payload = {
             "method": "update",
-            "game": game,
-            "scores": scores            
+            "game": game
         };
 
         for (const client_id of Object.keys(game.clients)) {
@@ -171,5 +170,5 @@ function update_game_state() {
     };
 
     // repeat every 500ms
-    setTimeout(update_game_state, 100);
+    setTimeout(update_game_state, 500);
 }

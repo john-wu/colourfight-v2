@@ -1,14 +1,19 @@
 import PropTypes from "prop-types"
 
-const Button = ({ color, text, borderRadius, onClick }) => {
+const Button = ({ color, text, width, height, key, id, borderRadius, onClick }) => {
 
     return (
         <button 
             onClick={onClick} 
             style={{ 
                 backgroundColor: color,
-                borderRadius: borderRadius }} 
+                borderRadius: borderRadius,
+                width: width,
+                height: height
+            }} 
             className="btn"
+            key={key}
+            id={id}
         >
             {text}
         </button>
@@ -18,6 +23,10 @@ const Button = ({ color, text, borderRadius, onClick }) => {
 Button.defaultProps = {
     color: "gray",
     text: "",
+    width: "auto",
+    height: "auto",
+    key: "",
+    id: "",
     borderRadius: "5px"
 }
 
