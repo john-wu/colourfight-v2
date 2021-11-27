@@ -10,7 +10,7 @@ import useWebSocket, { ReadyState } from "react-use-websocket";
 
 function App() {
   const navigate = useNavigate();
-  const [socketUrl, setSocketUrl] = useState("ws://localhost:8080");
+  const [socketUrl, setSocketUrl] = useState("ws://www.jozwu.com:8080");
   const [messageHistory, setMessageHistory] = useState([]);
   const [interface_data, set_interface_data] = useState({});
   const [client_data, set_client_data] = useState({});
