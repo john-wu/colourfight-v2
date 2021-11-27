@@ -47,7 +47,17 @@ body {
 .gameHeader {
   display: grid;
   grid-template-columns: max-content max-content;
-  grid-gap: 100px;
+  grid-gap: 30px;
+  padding-top: 20px;
+}
+
+.gameTimer {
+  width: 300px;
+  word-wrap: break-word;
+}
+
+.winnerString {
+  word-wrap: break-word;
 }
 
 .scoreBoard {

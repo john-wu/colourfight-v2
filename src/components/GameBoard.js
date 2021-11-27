@@ -10,6 +10,7 @@ const GameBoard = ({ game_data, click_ball }) => {
 
     return (
         <>
+            <p>Game ID: {game_data.id}</p>
             <div className="gameHeader">
                 <ScoreBoard game_data={game_data} />
                 <GameTimer game_data={game_data} />

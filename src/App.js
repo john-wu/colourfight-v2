@@ -15,8 +15,6 @@ function App() {
   const [interface_data, set_interface_data] = useState({});
   const [client_data, set_client_data] = useState({});
   const [game_data, set_game_data] = useState({});
-  const websocket = useRef(null);
-  const global_data = {};
 
   useEffect(() => {
     set_interface_data(JSON.parse(window.localStorage.getItem('interface_data')));
@@ -38,60 +36,59 @@ function App() {
 
   const {
     sendMessage,
-    lastMessage
+    lastMessage,
+    readyState
   } = useWebSocket(socketUrl);
+
+  const connectionStatus = {
+    [ReadyState.CONNECTING]: 'Connecting',
+    [ReadyState.OPEN]: 'Open',
+    [ReadyState.CLOSING]: 'Closing',
+    [ReadyState.CLOSED]: 'Closed',
+    [ReadyState.UNINSTANTIATED]: 'Uninstantiated',
+  }[readyState];
 
   useEffect(() => {
     if (lastMessage !== null) {
       setMessageHistory(prev => prev.concat(lastMessage));
 
       const response = JSON.parse(lastMessage.data);
-      console.log(response);
+      // receive connect response from server
+      if (response.method === "connect") {
+        set_client_data({"client_id": response.client_id});
+      };
+
+      // receive create response from server
+      if (response.method === "create") {
+        const game_id = response.game.id;
+        join_game(client_data.player_name, game_id);
+      };
+
+      // receive join response from server
+      if (response.method === "join") {
+        const game = response.game;
+
+        if (!game) {
+          set_interface_data(interface_data => ({...interface_data, error_message: response.error}))
+          return;
+        }
+
+        set_game_data({...game});
+        navigate(`/game/${game.id}`)
+      };
+
+      // receive update response from server
+      if (response.method === "update") {
+        if (!response.game.state)
+            return;
+
+        const game = response.game;
+
+        // update game state
+        set_game_data({...game});
+      };
     }
   }, [lastMessage, setMessageHistory]);
-
-  // useEffect( () => {
-  //   websocket.current = new WebSocket("ws://localhost:8080");
-  //   websocket.current.onmessage = message => {
-  //     // received server message
-  //     const response = JSON.parse(message.data);
-
-  //     // receive connect response from server
-  //     if (response.method === "connect") {
-  //       set_client_data({"client_id": response.client_id});
-  //     };
-
-  //     // receive create response from server
-  //     if (response.method === "create") {
-  //       const game_id = response.game.id;
-  //       join_game(global_data.player_name, game_id);
-  //     };
-
-  //     // receive join response from server
-  //     if (response.method === "join") {
-  //       const game = response.game;
-
-  //       if (!game) {
-  //         set_interface_data(interface_data => ({...interface_data, error_message: response.error}))
-  //         return;
-  //       }
-
-  //       set_game_data({...game});
-  //       navigate(`/game/${game.id}`)
-  //     };
-
-  //     // receive update response from server
-  //     if (response.method === "update") {
-  //       if (!response.game.state)
-  //           return;
-
-  //       const game = response.game;
-
-  //       // update game state
-  //       set_game_data({...game});
-  //     };
-  //   };
-  // }, []);
 
   // on new game button press
   const new_game = async (num_players, time_limit, player_name) => {
@@ -106,7 +103,7 @@ function App() {
       return;
     }
 
-    global_data.player_name = player_name;
+    set_client_data(client_data => ({...client_data, player_name: player_name}));
 
     // user wants to create new game
     const payload = {
@@ -116,14 +113,12 @@ function App() {
       "time_limit": time_limit
     };
 
-    const response = await websocket.current.send(JSON.stringify(payload));
+    const response = await sendMessage(JSON.stringify(payload));
   };
 
   // on join game button press
   const join_game = async (player_name, game_id) => {
-    console.log(client_data.client_id);
     const client_id = client_data.client_id;
-    setTimeout(() => {  console.log(client_id); }, 200);
 
     if (!game_id) {
       set_interface_data({...interface_data, error_message: "Please add a Game ID"});
@@ -143,7 +138,7 @@ function App() {
 
     console.log(client_id)
 
-    const response = await websocket.current.send(JSON.stringify(payload));
+    const response = await sendMessage(JSON.stringify(payload));
   };
 
   // on game ball button press
@@ -162,7 +157,7 @@ function App() {
       "ball_id": ball_id
     };
 
-    const response = await websocket.current.send(JSON.stringify(payload));
+    const response = await sendMessage(JSON.stringify(payload));
   }
 
   return (

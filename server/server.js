@@ -2,6 +2,7 @@ const path = require("path");
 const http = require("http");
 const { v4: uuidv4 } = require('uuid');
 const ws_server = require("websocket").server;
+const { client } = require("websocket");
 
 // create server and listen for requests
 const http_server = http.createServer();
@@ -47,6 +48,7 @@ websocket_server.on("request", request => {
                 "clients": {},
                 "state": {},
                 "scores": {},
+                "winners": [],
                 "status": "pending"
             };
 
@@ -93,10 +95,11 @@ websocket_server.on("request", request => {
             if (player_name === "")
                 player_name = player_colour;
             game.clients[client_id] = {
+                "id": client_id,
                 "player_colour": player_colour,
                 "player_name": player_name
             };
-            game.scores[player_name] = 0;
+            game.scores[client_id] = 0;
             
             // start game once max players reached
             if (Object.keys(game.clients).length === max_players) {
@@ -146,22 +149,30 @@ websocket_server.on("request", request => {
 });
 
 function update_game_state(game_id) {
-    // send updated game state to each client
+    // calculate scores and send updated game state to each client
     const game = games[game_id];
-    if (game.status === "finished")
-        return;
-
-    // calculate total scores
     const state = game.state;
     const scores = game.scores;
-    for (const player_name of Object.keys(scores)) {
-        scores[player_name] = 0;
+    for (const client_id of Object.keys(scores)) {
+        scores[client_id] = 0;
     };
     for (const ball_id of Object.keys(state)) {
-        scores[state[ball_id].player_name] += 1;
+        scores[state[ball_id].id] += 1;
     };
 
     game["scores"] = scores;
+
+    if (game.status === "finished") {
+        client_ids = Object.keys(scores);
+        highest_score = Math.max.apply(null, client_ids.map(client_id => scores[client_id]));
+        winners = client_ids.reduce((result, client_id) => {
+            if (scores[client_id] === highest_score)
+                result.push(client_id);
+            return result;
+        }, []);
+
+        game.winners = winners;
+    };
 
     const payload = {
         "method": "update",
@@ -171,9 +182,12 @@ function update_game_state(game_id) {
     for (const client_id of Object.keys(game.clients)) {
         clients[client_id].connection.send(JSON.stringify(payload));
     };
+    
+    if (game.status === "finished")
+        return;
 
-    // repeat every 500ms
-    setTimeout(() => {update_game_state(game_id)}, 500);
+    // repeat every 100ms
+    setTimeout(() => {update_game_state(game_id)}, 100);
 }
 
 function start_timer(game_id) {
@@ -185,6 +199,10 @@ function start_timer(game_id) {
             console.log("Timer drifted too far!");
 
         games[game_id].time_remaining -= 1
+        if (games[game_id].time_remaining === 0) {
+            games[game_id].status = "finished";
+            return;
+        }
 
         expected += interval;
         setTimeout(step, Math.max(0, interval - dt));
